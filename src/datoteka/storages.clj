@@ -33,8 +33,10 @@
   The final file path can be different to the one provided
   to this function and the behavior is totally dependen on
   the storage implementation."
-  [storage path content]
-  (pt/-save storage path content))
+  ([storage path content]
+   (pt/-save storage path content))
+  ([storage path content opts]
+   (pt/-save storage path content opts)))
 
 (defn lookup
   "Resolve provided relative path in the storage and return
@@ -43,13 +45,35 @@
   [storage path]
   (pt/-lookup storage path))
 
+(defn move
+  "Move from `path a` to `path b` within the storage"
+  ([storage path-a path-b]
+   (pt/-move storage path-a path-b))
+  ([storage path-a path-b opts]
+   (pt/-move storage path-a path-b opts)))
+
 (defn exists?
   "Check if a  relative `path` exists in the storage."
   [storage path]
   (pt/-exists? storage path))
 
+(defn directory?
+  "Check if a `path` in the storage is a directory"
+  [storage path]
+  (pt/-directory? storage path))
+
+(defn list-dir
+  "Try to list a `path` as a directory in the storage"
+  [storage path]
+  (pt/-list-dir storage path))
+
+(defn create-dir
+  "Try to create a directory given a `path` in the storage"
+  [storage path]
+  (pt/-create-dir storage path))
+
 (defn delete
-  "Delete a file from the storage."
+  "Delete a `path` from the storage."
   [storage path]
   (pt/-delete storage path))
 

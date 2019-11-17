@@ -254,7 +254,7 @@
 
 (defn list-dir
   "Return a lazy seq of files and directories found under the provided
-  directory. The order of files is not guarrantied.
+  directory. The order of files is not guaranteed.
 
   NOTE: the seq should be fully realized in order to properly release
   all acquired resources for this operation. Converting it to vector

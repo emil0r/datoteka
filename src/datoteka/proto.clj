@@ -37,9 +37,13 @@
 (defprotocol IStorage
   "A basic abstraction for storage access."
   (-lookup [_ path] "Resolves the path to the local filesystem.")
-  (-save [_ path content] "Persist the content under specified path.")
-  (-delete [_ path] "Delete the file by its path.")
-  (-exists? [_ path] "Check if file exists by path."))
+  (-save [_ path content] [_ path content opts] "Persist the content under specified path.")
+  (-delete [_ path] "Delete the file/directory by its path.")
+  (-move [_ path-a path-b] [_ path-a path-b opts] "Move the file from a to b")
+  (-exists? [_ path] "Check if file exists by path.")
+  (-directory? [_ path] "Is this a directory?")
+  (-list-dir [_ path] "List the directory")
+  (-create-dir [_ path] "Create the directory"))
 
 (defprotocol IClearableStorage
   (-clear [_] "clear all contents of the storage"))

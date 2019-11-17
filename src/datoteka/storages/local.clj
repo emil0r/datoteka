@@ -52,20 +52,27 @@
       fullpath)))
 
 (defn- save
-  [base path content]
+  [base path content overwrite?]
   (let [^Path path (pt/-path path)
         ^Path fullpath (normalize-path base path)]
     (when-not (fs/exists? (.getParent fullpath))
       (fs/create-dir (.getParent fullpath)))
-    (loop [iteration nil]
-      (let [[basepath ext] (fs/split-ext fullpath)
-            candidate (fs/path (str basepath iteration ext))]
-        (if (fs/exists? candidate)
-          (recur (if (nil? iteration) 1 (inc iteration)))
-          (with-open [^InputStream src (pt/-input-stream content)
-                      ^OutputStream dst (io/output-stream candidate)]
-            (io/copy src dst)
-            (fs/relativize candidate base)))))))
+    (if overwrite?
+
+      (with-open [^InputStream src (pt/-input-stream content)
+                  ^OutputStream dst (io/output-stream fullpath)]
+        (io/copy src dst)
+        (fs/relativize fullpath base))
+      
+      (loop [iteration nil]
+        (let [[basepath ext] (fs/split-ext fullpath)
+              candidate (fs/path (str basepath iteration ext))]
+          (if (fs/exists? candidate)
+            (recur (if (nil? iteration) 1 (inc iteration)))
+            (with-open [^InputStream src (pt/-input-stream content)
+                        ^OutputStream dst (io/output-stream candidate)]
+              (io/copy src dst)
+              (fs/relativize candidate base))))))))
 
 (defn- delete
   [base path]
@@ -84,14 +91,17 @@
 
 (defrecord LocalFileSystemBackend [^Path base
                                    ^URI baseuri
-                                   ^ExecutorService executor]
+                                   ^ExecutorService executor
+                                   ^Boolean overwrite?]
   pt/IPublicStorage
   (-public-uri [_ path]
     (.resolve baseuri (str path)))
 
   pt/IStorage
   (-save [_ path content]
-    (submit executor #(save base path content)))
+    (submit executor #(save base path content overwrite?)))
+  (-save [_ path content opts]
+    (submit executor #(save base path content (:overwrite? opts))))
 
   (-delete [_ path]
     (submit executor #(delete base path)))
@@ -102,6 +112,47 @@
        (let [path (->> (pt/-path path)
                        (normalize-path base))]
          (fs/exists? path)))
+      (catch Exception e
+        (p/rejected e))))
+  
+  (-directory? [this path]
+    (try
+      (p/resolved
+       (let [path (->> (pt/-path path)
+                       (normalize-path base))]
+         (fs/directory? path)))
+      (catch Exception e
+        (p/rejected e))))
+
+  (-list-dir [this path]
+    (try
+      (p/resolved
+       (let [path (->> (pt/-path path)
+                       (normalize-path base))]
+         (fs/list-dir path)))
+      (catch Exception e
+        (p/rejected e))))
+
+  (-create-dir [this path]
+    (try
+      (p/resolved
+       (let [path (->> (pt/-path path)
+                       (normalize-path base))]
+         (fs/create-dir path)))
+      (catch Exception e
+        (p/rejected e))))
+
+  (-move [this path-a path-b]
+    (pt/-move this path-a path-b #{:atomic :replace}))
+
+  (-move [this path-a path-b opts]
+    (try
+      (p/resolved
+       (let [path-a (->> (pt/-path path-a)
+                         (normalize-path base))
+             path-b (->> (pt/-path path-b)
+                         (normalize-path base))]
+         (fs/move path-a path-b opts)))
       (catch Exception e
         (p/rejected e))))
 
@@ -132,8 +183,9 @@
   - `:baseuri`: a base uri used for resolve the files
   - `:executor`: an executor instance (optional)
   "
-  [{:keys [basedir baseuri executor]
-    :or {executor (ForkJoinPool/commonPool)}
+  [{:keys [basedir baseuri executor overwrite?]
+    :or {executor (ForkJoinPool/commonPool)
+         overwrite? false}
     :as options}]
   (let [^Path basepath (pt/-path basedir)
         ^URI baseuri (pt/-uri baseuri)]
@@ -144,4 +196,4 @@
     (when-not (fs/exists? basepath)
       (fs/create-dir basepath))
 
-    (->LocalFileSystemBackend basepath baseuri executor)))
+    (->LocalFileSystemBackend basepath baseuri executor overwrite?)))

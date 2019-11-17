@@ -67,9 +67,11 @@
       (pt/-public-uri storage path)))
 
   pt/IStorage
-  (-save [_ path content]
+  (-save [this path content]
+    (pt/-save this path content nil))
+  (-save [_ path content opts]
     (let [^Path path (pt/-path [prefix path])]
-      (->> (pt/-save storage path content)
+      (->> (pt/-save storage path content opts)
            (p/map (fn [^Path path]
                     (.relativize prefix path))))))
 
@@ -80,6 +82,28 @@
   (-exists? [this path]
     (let [^Path path (pt/-path [prefix path])]
       (pt/-exists? storage path)))
+
+  (-directory? [this path]
+    (let [^Path path (pt/-path [prefix path])]
+      (pt/-directory? storage path)))
+
+  (-list-dir [this path]
+    (let [^Path path (pt/-path [prefix path])]
+      (pt/-list-dir storage path)))
+
+  (-create-dir [this path]
+    (let [^Path path (pt/-path [prefix path])]
+      (pt/-create-dir storage path)))
+
+  (-move [this path-a path-b]
+    ;; not entirely sure if the opts make much sense in the context of a
+    ;; scoped storage that is not a local file system
+    (pt/-move this path-a path-b #{:atomic :replace}))
+  
+  (-move [_ path-a path-b opts]
+    (let [^Path path-a (pt/-path [prefix path-a])
+          ^Path path-b (pt/-path [prefix path-b])]
+      (pt/-move storage path-a path-b opts)))
 
   (-lookup [_ path]
     (->> (pt/-lookup storage "")
